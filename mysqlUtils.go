@@ -18,9 +18,28 @@ func dbConn() (db *sql.DB) {
 	return db
 }
 
-func queryRow(query string, rs RowScanner, params ...interface{}) error {
+func ExecuteQuery(query string, args ...interface{}) {
 	db := dbConn()
-	return rs.ScanRow(db.QueryRow(query, params...))
+	dbPrepare, err := db.Prepare(query)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	result, err := dbPrepare.Exec(args...)
+	if err != nil {
+		panic(err.Error())
+	}
+	if result != nil {
+
+	}
+	defer db.Close()
+}
+
+func queryRow(query string, rs RowScanner, args ...interface{}) error {
+	db := dbConn()
+	err := rs.ScanRow(db.QueryRow(query, args...))
+	defer db.Close()
+	return err
 }
 
 func queryRows(query string, rs RowScanner, args ...interface{}) error {
@@ -38,6 +57,7 @@ func queryRows(query string, rs RowScanner, args ...interface{}) error {
 			return err
 		}
 	}
+	defer db.Close()
 	return rows.Err()
 }
 
@@ -78,15 +98,3 @@ func (list *EmployeeList) ScanRow(r Row) error {
 	list.Items = append(list.Items, u)
 	return nil
 }
-
-// example
-// ulist := new(UserList)
-// if err := queryRows(queryString, ulist, arg1, arg2); err != nil {
-//     panic(err)
-// }
-
-// or
-// u := new(User)
-// if err := queryRow(queryString, u, arg1, arg2); err != nil {
-//     panic(err)
-// }
