@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"text/template"
@@ -9,71 +8,37 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type Employee struct {
-	Id   int
-	Name string
-	City string
-}
-
-func dbConn() (db *sql.DB) {
-	dbDriver := "mysql"
-	dbUser := "root"
-	dbPass := ""
-	dbName := "go_test"
-	db, err := sql.Open(dbDriver, dbUser+":"+dbPass+"@/"+dbName)
-	if err != nil {
-		panic(err.Error())
-	}
-	return db
-}
-
 var tmpl = template.Must(template.ParseGlob("form/*"))
 
+func GetAll() *EmployeeList {
+	query := "SELECT * FROM Employee"
+
+	elist := new(EmployeeList)
+	if err := queryRows(query, elist); err != nil {
+		panic(err)
+	}
+	return elist
+}
+
+func GetById(id string) *Employee {
+	query := "SELECT * FROM Employee WHERE id=?"
+	emp := new(Employee)
+	if err := queryRow(query, emp, id); err != nil {
+		panic(err)
+	}
+	return emp
+}
+
 func Index(w http.ResponseWriter, r *http.Request) {
-	db := dbConn()
-	selDB, err := db.Query("SELECT * FROM Employee")
-	if err != nil {
-		panic(err.Error())
-	}
-	emp := Employee{}
-	res := []Employee{}
-	for selDB.Next() {
-		var id int
-		var name, city string
-		err = selDB.Scan(&id, &name, &city)
-		if err != nil {
-			panic(err.Error())
-		}
-		emp.Id = id
-		emp.Name = name
-		emp.City = city
-		res = append(res, emp)
-	}
+	res := GetAll().Items
+
 	tmpl.ExecuteTemplate(w, "Index", res)
-	defer db.Close()
 }
 
 func Show(w http.ResponseWriter, r *http.Request) {
-	db := dbConn()
 	nId := r.URL.Query().Get("id")
-	selDB, err := db.Query("SELECT * FROM Employee WHERE id=?", nId)
-	if err != nil {
-		panic(err.Error())
-	}
-	emp := Employee{}
-	for selDB.Next() {
-		var id int
-		var name, city string
-		err = selDB.Scan(&id, &name, &city)
-		if err != nil {
-			panic(err.Error())
-		}
-		emp.Id = id
-		emp.Name = name
-		emp.City = city
-	}
+	emp := GetById(nId)
 	tmpl.ExecuteTemplate(w, "Show", emp)
-	defer db.Close()
 }
 
 func New(w http.ResponseWriter, r *http.Request) {
@@ -81,26 +46,10 @@ func New(w http.ResponseWriter, r *http.Request) {
 }
 
 func Edit(w http.ResponseWriter, r *http.Request) {
-	db := dbConn()
 	nId := r.URL.Query().Get("id")
-	selDB, err := db.Query("SELECT * FROM Employee WHERE id=?", nId)
-	if err != nil {
-		panic(err.Error())
-	}
-	emp := Employee{}
-	for selDB.Next() {
-		var id int
-		var name, city string
-		err = selDB.Scan(&id, &name, &city)
-		if err != nil {
-			panic(err.Error())
-		}
-		emp.Id = id
-		emp.Name = name
-		emp.City = city
-	}
+	emp := GetById(nId)
+
 	tmpl.ExecuteTemplate(w, "Edit", emp)
-	defer db.Close()
 }
 
 func Insert(w http.ResponseWriter, r *http.Request) {
